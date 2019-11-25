@@ -5,9 +5,9 @@ import org.apache.spark.sql.functions._
 
 object BostonCrimes extends App {
 
-  val crimeFile = args(0)
-  val offenseCodesFile = args(1)
-  val resultFile = args(2)
+  val crimeFile = "./src/files/crime.csv"
+  val offenseCodesFile = "./src/files/offense_codes.csv"
+  val resultFile = "./src/files/result"
 
   val spark: SparkSession = SparkSession
     .builder()
@@ -102,7 +102,7 @@ object BostonCrimes extends App {
       .join(crimesByDistrictByCrimeTypes, "DISTRICT")
       .select($"DISTRICT", $"crimes_total", $"crimes_monthly", $"frequent_crime_types", $"lat", $"lng")
 
-  finalResult.repartition(1).write.mode("OVERWRITE").parquet(resultFile)
 
-
+  //finalResult.repartition(1).write.mode("OVERWRITE").parquet(resultFile)
+  finalResult.show()
 }
