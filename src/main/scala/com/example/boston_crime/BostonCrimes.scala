@@ -104,5 +104,6 @@ object BostonCrimes extends App {
 
 
   //finalResult.repartition(1).write.mode("OVERWRITE").parquet(resultFile)
+  finalResult.repartition(1).write.mode("OVERWRITE").csv(resultFile)
   finalResult.show()
 }
