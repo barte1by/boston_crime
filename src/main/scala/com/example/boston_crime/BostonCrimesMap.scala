@@ -3,7 +3,7 @@ package com.example.boston_crime
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 
-object BostonCrimes extends App {
+object BostonCrimesMap extends App {
 
   val crimeFile = "./src/files/crime.csv"
   val offenseCodesFile = "./src/files/offense_codes.csv"
@@ -19,6 +19,7 @@ object BostonCrimes extends App {
 
   import spark.implicits._
 
+  //case class for file crime.csv
   case class Crime(
                     INCIDENT_NUMBER: Option[String],
                     OFFENSE_CODE: Option[Int],
@@ -38,6 +39,7 @@ object BostonCrimes extends App {
                     Long: Option[Double],
                     Location: Option[String]
                   )
+  //case class for file offensecodes.csv
   case class OffenseCode(
                           CODE: Option[Int],
                           NAME: Option[String],
@@ -56,45 +58,61 @@ object BostonCrimes extends App {
     .option("header", "true")
     .option("inferSchema", "true")
     .csv(offenseCodesFile)
-    .withColumn("CRIME_TYPE", trim(substring_index($"NAME", "-", 1)))
+    .withColumn( colName = "CRIME_TYPE", trim(substring_index(str= $"NAME", delim ="-", count = 1)))
     .as[OffenseCode]
 
-  val offense_codes_br = spark.sparkContext.broadcast(offense_codes)
+  //add val broadcast
+  val broadcast_offense_codes = sc.broadcast(offense_codes)
 
-  val filteredCrimes = crimes
-    .filter($"DISTRICT".isNotNull).cache()
 
-  val crimesWithOffenceCodes = filteredCrimes
-    .join(offense_codes_br.value, filteredCrimes("OFFENSE_CODE") === offense_codes_br.value("CODE"))
-    .select("INCIDENT_NUMBER", "DISTRICT", "MONTH", "Lat", "Long", "CRIME_TYPE").cache()
+  //val countDistrict = crimes.groupBy("DISTRICT").count().show()
+  val filterCrimes = crimes
+    .filter($"DISTRICT".isNotNull)
 
-  val crimesDistrictAnalytics = filteredCrimes
+  val crimesPlusOffenceCodes = filterCrimes
+    .join(broadcast_offense_codes.value, filterCrimes("OFFENSE_CODE") === broadcast_offense_codes.value("CODE"))
+    .select( col = "INCIDENT_NUMBER", cols = "DISTRICT", "MONTH", "Lat", "Long", "CRIME_TYPE").cache()
+    //.show()
+
+  val crimesDistrictMonth = filterCrimes
+    .groupBy( cols =$"DISTRICT", $"MONTH")
+    .agg(expr(expr = "count(INCIDENT_NUMBER) as CRIMES_MON"))//.createOrReplaceTempView("crimesDistrictMonth")
+    //.show()
+
+  crimesDistrictMonth.show()
+
+  //val countDistrict = crimes.filter($"Lat".isNull).groupBy($"Lat").count().show()
+  val crimesDistrictAnalytics = filterCrimes
     .groupBy($"DISTRICT")
     .agg(expr("COUNT(INCIDENT_NUMBER) as crimes_total"),
       expr("AVG(Lat) as lat"),
       expr("AVG(Long) as lng")
     )
+  //.show()
 
-  val crimesByDistrictByMonth = filteredCrimes
-    .groupBy($"DISTRICT", $"MONTH")
-    .agg(expr("count(INCIDENT_NUMBER) as CRIMES_CNT")).createOrReplaceTempView("crimesByDistrictByMonth")
 
-  val crimesDistrictMedian = spark.sql(
-    "select " +
-      " DISTRICT" +
-      " ,percentile(CRIMES_CNT, 0.5) as crimes_monthly " +
-      " from crimesByDistrictByMonth" +
-      " group by DISTRICT")
-
-  val crimesByDistrictByCrimeTypes = crimesWithOffenceCodes
+  val crimesByDistrictByCrimeTypes = crimesPlusOffenceCodes
     .groupBy($"DISTRICT", $"CRIME_TYPE")
     .agg(expr("count(INCIDENT_NUMBER) as CRIMES_CNT"))
     .selectExpr("*", "row_number() over(partition by DISTRICT order by CRIMES_CNT desc) as rn")
     .filter($"rn" <= 3)
     .drop($"rn")
-    .drop($"CRIMES_CNT")
+    .drop($"CRIMES_MON")
     .groupBy($"DISTRICT")
     .agg(concat_ws(", ", collect_list($"CRIME_TYPE")).alias("frequent_crime_types"))
+
+
+  val crimesDistrictMedian = spark.sql(
+      "select " +
+        " DISTRICT" +
+        " ,percentile(CRIMES_CNT, 0.5) as crimes_monthly " +
+        " from crimesDistrictMonth" +
+        " group by DISTRICT")
+  crimesDistrictMedian.show()
+
+
+
+
 
   val finalResult =
     crimesDistrictAnalytics
@@ -102,8 +120,10 @@ object BostonCrimes extends App {
       .join(crimesByDistrictByCrimeTypes, "DISTRICT")
       .select($"DISTRICT", $"crimes_total", $"crimes_monthly", $"frequent_crime_types", $"lat", $"lng")
 
+  finalResult.show()
 
   //finalResult.repartition(1).write.mode("OVERWRITE").parquet(resultFile)
-  finalResult.repartition(1).write.mode("OVERWRITE").csv(resultFile)
-  finalResult.show()
+  //finalResult.repartition(1).write.mode("OVERWRITE").csv(resultFile)
+
+
 }
