@@ -5,10 +5,13 @@ import org.apache.spark.sql.functions.{expr, _}
 
 object BostonCrimesMap extends App {
 
-  val crimeFile = "./src/files/crime.csv"
-  val offenseCodesFile = "./src/files/offense_codes.csv"
-  val resultFile = "./src/files/result"
-  val resultFile1 = "./src/files/result1"
+  //val crimeFile = "./src/files/crime.csv"
+  //val offenseCodesFile = "./src/files/offense_codes.csv"
+  //val resultFile = "./src/files/result"
+  val crimeFile = args(0)
+  val offenseCodesFile = args(1)
+  val resultFile = args(2)
+
 
   val spark: SparkSession = SparkSession
     .builder()
@@ -96,10 +99,10 @@ object BostonCrimesMap extends App {
     .groupBy($"DISTRICT")
     .agg(concat_ws(", ", collect_list($"CRIME_TYPE")).alias("frequent_crime_types"))
 
-  /*
+
   val crimesDistrictMonth = filterCrimes
     .groupBy(cols =$"DISTRICT", $"MONTH")
-    .agg(expr(expr = "count(INCIDENT_NUMBER) as CRIMES_MON"))//.createOrReplaceTempView("crimesDistrictMonth")
+    .agg(expr(expr = "count(INCIDENT_NUMBER) as CRIMES_MON")).createOrReplaceTempView("crimesDistrictMonth")
 
   val crimesDistrictMedian = spark.sql(
       "select " +
@@ -107,21 +110,15 @@ object BostonCrimesMap extends App {
         " ,percentile(CRIMES_MON, 0.5) as crimes_monthly " +
         " from crimesDistrictMonth" +
         " group by DISTRICT")
-  //crimesDistrictMedian.show()
-*/
+
   val Final =
     crimesDistrictCord
       .join(crimesDistrictTotal, "DISTRICT")
-    // .join(crimesDistrictMedian, "DISTRICT")
+      .join(crimesDistrictMedian, "DISTRICT")
       .join(crimesDistrictPlusTypes, "DISTRICT")
-    //  .select($"DISTRICT", $"crimes_total", $"crimes_monthly", $"frequent_crime_types", $"lat", $"lng")
-      .select($"DISTRICT", $"crimes_total", $"frequent_crime_types", $"lat", $"lng")
+      .select($"DISTRICT", $"crimes_total", $"crimes_monthly", $"frequent_crime_types", $"lat", $"lng")
 
-
-
-  //Final.repartition(1).write.mode("OVERWRITE").parquet(resultFile)
+  Final.repartition(1).write.mode("OVERWRITE").parquet(resultFile)
   //Final.repartition(1).write.mode("OVERWRITE").csv(resultFile)
-  Final.show()
-
-
+  //Final.show()
 }
