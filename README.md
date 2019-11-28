@@ -21,3 +21,6 @@ spark-submit --master local[*] --class com.example.BostonCrimesMap /path/to/jar 
 Документация по SQL функциям Spark: https://spark.apache.org/docs/latest/api/sql/index.html
 
 Подсказка: в спарке есть функция percentile_approx, которая может посчитать медиану.
+
+To run:
+spark-submit --master local[*] --class com.example.BostonCrimesMap target/scala-2.11/BostonCrimesMap-assembly-1.0.jar src/files/crime.csv src/files/offense_codes.csv src/files/result
