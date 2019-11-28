@@ -22,10 +22,8 @@ lazy val root = (project in file(".")).
     coverageHighlighting := true,
 
     libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-streaming" % "2.3.2" % "provided",
-      "org.apache.spark" %% "spark-sql" % "2.3.2" % "provided",
-      //"org.json4s" %% "json4s-jackson" % "3.6.7",
-      //"org.scala-lang.modules" %% "scala-xml" % "1.2.0",
+      "org.apache.spark" %% "spark-streaming" % "2.3.0" % "provided",
+      "org.apache.spark" %% "spark-sql" % "2.3.0" % "provided",
 
       "org.scalatest" %% "scalatest" % "3.0.1" % "test",
       "org.scalacheck" %% "scalacheck" % "1.13.4" % "test",

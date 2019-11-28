@@ -5,9 +5,9 @@ import org.apache.spark.sql.functions.{expr, _}
 
 object BostonCrimesMap extends App {
 
-  //val crimeFile = "./src/files/crime.csv"
-  //val offenseCodesFile = "./src/files/offense_codes.csv"
-  //val resultFile = "./src/files/result"
+//  val crimeFile = "./src/files/crime.csv"
+//  val offenseCodesFile = "./src/files/offense_codes.csv"
+//  val resultFile = "./src/files/result"
   val crimeFile = args(0)
   val offenseCodesFile = args(1)
   val resultFile = args(2)
